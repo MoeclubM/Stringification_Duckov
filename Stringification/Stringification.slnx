@@ -1,0 +1,23 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+  </Configurations>
+  <Project Path="F:/SteamLibrary/steamapps/common/Escape from Duckov/Duckov.exe">
+    <BuildType Project="Release" />
+    <Platform Project="x64" />
+    <Properties Name="DebuggerProjectSystem">
+      <Property Name="AttachLaunchAction" Value="Yes" />
+      <Property Name="Environment" Value="默认值" />
+      <Property Name="Executable" Value="F:\SteamLibrary\steamapps\common\Escape from Duckov\Duckov.exe" />
+      <Property Name="IORedirection" Value="Auto" />
+      <Property Name="LaunchingEngine" Value="00000000-0000-0000-0000-000000000000" />
+      <Property Name="LaunchSQLEngine" Value="No" />
+      <Property Name="PortSupplier" Value="00000000-0000-0000-0000-000000000000" />
+      <Property Name="RemoteMachine" />
+      <Property Name="StartingDirectory" Value="F:\SteamLibrary\steamapps\common\Escape from Duckov" />
+      <Property Name="UseLegacyDebugEngines" Value="No" />
+    </Properties>
+  </Project>
+  <Project Path="Stringification/Stringification.csproj" />
+</Solution>
