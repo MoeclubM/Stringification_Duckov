@@ -22,7 +22,7 @@
 
 *   **Jump / 跳跃**:
     *   Add jump physics for the Game.
-    *   为游戏增加跳跃的物理效果。
+    *   为游戏增加跳跃与二段跳的物理效果。
 
 ## Configuration / 配置
 
@@ -41,12 +41,5 @@ You can adjust the following settings in the Mod Settings menu:
     *   滑翔时角色的视觉倾斜角度。
 
 ## Notes / 注意事项
-
-*   The mod is designed to work with the standard character controller.
-    *   本模组专为标准角色控制器设计。
 *   Flight is automatically cancelled if you land or hit an obstacle.
     *   如果着陆或撞到障碍物，飞行会自动取消。
-
----
-*Developed by Duckorv*
-*由 Duckorv 开发*
