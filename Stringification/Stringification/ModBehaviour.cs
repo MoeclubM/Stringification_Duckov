@@ -49,6 +49,7 @@ namespace Stringification
         private Stringification.Components.FlightMechanics flight = new Stringification.Components.FlightMechanics();
         private Stringification.Components.PlayerManager playerManager = new Stringification.Components.PlayerManager();
         private Stringification.Components.InputManager inputManager = new Stringification.Components.InputManager();
+        private Stringification.Components.ColliderManager colliderManager = new Stringification.Components.ColliderManager();
 
         // State
         private bool isStringified = false;
@@ -79,6 +80,7 @@ namespace Stringification
             isStringified = false;
             flight.StopFlight();
             visuals.SetTarget(null, null, null);
+            colliderManager.Reset();
         }
 
         private void InitializeConfig()
@@ -136,10 +138,12 @@ namespace Stringification
         {
             if (!playerManager.UpdatePlayerReference())
             {
+                colliderManager.Reset();
                 return;
             }
             
             visuals.SetTarget(playerManager.TargetModel, playerManager.DamageReceiver, playerManager.PlayerRigidbody);
+            colliderManager.SyncPlayer(playerManager.PlayerObject, playerManager.TargetModel, playerManager.DamageReceiver);
 
             bool grounded = IsGrounded(); 
 
@@ -203,6 +207,9 @@ namespace Stringification
             isStringified = active;
             visuals.SetStringified(active);
             
+            // Initial apply with identity rotation, LateUpdate will handle the rest
+            colliderManager.ApplyStringification(active, visuals.StringifiedThickness, Quaternion.identity, playerManager.TargetModel);
+            
             if (!active)
             {
                 visuals.SetRotation(false);
@@ -216,24 +223,14 @@ namespace Stringification
 
         private void HandleJumpInput()
         {
-            if (inputManager.IsDoubleTap()) // Double tap
+            // Simply check state: Grounded -> Single Jump, Airborne -> Double Jump
+            if (IsGrounded())
             {
-                if (inputManager.CanDoubleJump(IsGrounded()))
-                {
-                    jump.PerformDoubleJump(this, playerManager.PlayerObject, playerManager.PlayerRigidbody);
-                }
+                jump.PerformSingleJump(this, playerManager.PlayerObject, playerManager.PlayerRigidbody);
             }
-            else
+            else if (inputManager.CanDoubleJump(IsGrounded()))
             {
-                // Single Tap
-                if (IsGrounded())
-                {
-                    jump.PerformSingleJump(this, playerManager.PlayerObject, playerManager.PlayerRigidbody);
-                }
-                else if (inputManager.CanDoubleJump(IsGrounded()))
-                {
-                    jump.PerformDoubleJump(this, playerManager.PlayerObject, playerManager.PlayerRigidbody);
-                }
+                jump.PerformDoubleJump(this, playerManager.PlayerObject, playerManager.PlayerRigidbody);
             }
         }
 
@@ -275,6 +272,25 @@ namespace Stringification
             }
 
             visuals.LateUpdate();
+
+            if (isStringified)
+            {
+                // Get the current rotation from the model to sync colliders
+                Quaternion currentRotation = Quaternion.identity;
+                if (playerManager.TargetModel != null)
+                {
+                    currentRotation = playerManager.TargetModel.localRotation;
+                }
+                
+                Vector3 velocity = Vector3.zero;
+                if (playerManager.PlayerRigidbody != null)
+                {
+                    velocity = playerManager.PlayerRigidbody.velocity;
+                }
+                
+                colliderManager.ApplyStringification(true, visuals.StringifiedThickness, currentRotation, playerManager.TargetModel);
+                colliderManager.ResolveCollisions();
+            }
         }
     }
 }

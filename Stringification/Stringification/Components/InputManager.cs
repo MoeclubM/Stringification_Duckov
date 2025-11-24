@@ -9,13 +9,11 @@ namespace Stringification.Components
         public KeyCode JumpKey { get; set; } = KeyCode.X;
         public float FlightActivationSpeed { get; set; } = 0.5f;
 
-        private float lastJumpKeyPressTime = 0f;
         private bool hasDoubleJumped = false;
 
         public void Reset()
         {
             hasDoubleJumped = false;
-            lastJumpKeyPressTime = 0f;
         }
 
         public void ResetDoubleJump()
@@ -25,19 +23,14 @@ namespace Stringification.Components
 
         public bool CheckToggleInput()
         {
+            if (Cursor.visible) return false;
             return Input.GetKeyDown(ToggleKey);
         }
 
         public bool CheckJumpInput()
         {
+            if (Cursor.visible) return false;
             return Input.GetKeyDown(JumpKey);
-        }
-
-        public bool IsDoubleTap()
-        {
-            bool isDouble = Time.time - lastJumpKeyPressTime < 0.3f;
-            lastJumpKeyPressTime = Time.time;
-            return isDouble;
         }
 
         public bool CanDoubleJump(bool isGrounded)
