@@ -19,7 +19,10 @@ namespace Stringification
         private const string KEY_DESCENT_RATE = "DescentRateInt";
         private const string KEY_FLIGHT_ACTIVATION_SPEED = "FlightActivationSpeed";
         private const string KEY_FLIGHT_PITCH = "FlightPitch";
+        private const string KEY_ENABLE_FLIGHT_STEERING = "EnableFlightSteering";
+        private const string KEY_FLIGHT_STEERING_SPEED = "FlightSteeringSpeed";
         private const string KEY_STRINGIFICATION_ROTATION = "StringificationRotation";
+        private const string KEY_ALLOW_FIRING = "AllowFiring";
         
         private const string KEY_OBSTACLE_CHECK_DIST = "ObstacleCheckDist";
         private const string KEY_VISUAL_LERP_SPEED = "VisualLerpSpeed";
@@ -35,7 +38,10 @@ namespace Stringification
         private const float DEFAULT_DESCENT_RATE = -1.0f;
         private const float DEFAULT_FLIGHT_ACTIVATION_SPEED = 0.5f;
         private const float DEFAULT_FLIGHT_PITCH = 65.0f;
+        private const bool DEFAULT_ENABLE_FLIGHT_STEERING = true;
+        private const float DEFAULT_FLIGHT_STEERING_SPEED = 45.0f;
         private const float DEFAULT_STRINGIFICATION_ROTATION = 90.0f;
+        private const bool DEFAULT_ALLOW_FIRING = false;
         
         private const float DEFAULT_OBSTACLE_CHECK_DIST = 1.0f;
         private const float DEFAULT_VISUAL_LERP_SPEED = 15.0f;
@@ -53,6 +59,7 @@ namespace Stringification
 
         // State
         private bool isStringified = false;
+        private bool allowFiring = DEFAULT_ALLOW_FIRING;
 
         private ModInfo modInfo = new ModInfo 
         { 
@@ -87,14 +94,43 @@ namespace Stringification
         {
             if (ModSettingApiWrapper.Init(modInfo))
             {
-                // Keybindings
+                // 1. Keybindings
                 ModSettingApiWrapper.AddKeybinding(KEY_TOGGLE, "弦化开关 (Toggle Stringification)", DEFAULT_TOGGLE_KEY, DEFAULT_TOGGLE_KEY, (val) => inputManager.ToggleKey = val);
                 if (ModSettingApiWrapper.GetSavedValue<KeyCode>(KEY_TOGGLE, out KeyCode savedToggle)) inputManager.ToggleKey = savedToggle;
 
                 ModSettingApiWrapper.AddKeybinding(KEY_JUMP, "飞行/跳跃键 (Jump/Flight)", DEFAULT_JUMP_KEY, DEFAULT_JUMP_KEY, (val) => inputManager.JumpKey = val);
                 if (ModSettingApiWrapper.GetSavedValue<KeyCode>(KEY_JUMP, out KeyCode savedJump)) inputManager.JumpKey = savedJump;
 
-                // Float settings
+                // 2. Core Mechanics (Stringification)
+                ModSettingApiWrapper.AddSlider(KEY_STRINGIFICATION_ROTATION, "弦化旋转角度 (Stringification Rotation)", DEFAULT_STRINGIFICATION_ROTATION, -180.0f, 180.0f, (val) => visuals.VisualRotationAngle = val);
+                if (ModSettingApiWrapper.GetSavedValue<float>(KEY_STRINGIFICATION_ROTATION, out float savedRotation)) visuals.VisualRotationAngle = savedRotation;
+
+                ModSettingApiWrapper.AddSlider(KEY_STRINGIFIED_THICKNESS, "纸片厚度 (Paper Thickness)", DEFAULT_STRINGIFIED_THICKNESS, 0.01f, 0.5f, (val) => visuals.StringifiedThickness = val);
+                if (ModSettingApiWrapper.GetSavedValue<float>(KEY_STRINGIFIED_THICKNESS, out float savedThickness)) visuals.StringifiedThickness = savedThickness;
+
+                ModSettingApiWrapper.AddToggle(KEY_ALLOW_FIRING, "弦化时允许开火 (Allow Firing)", DEFAULT_ALLOW_FIRING, (val) => allowFiring = val);
+                if (ModSettingApiWrapper.GetSavedValue<bool>(KEY_ALLOW_FIRING, out bool savedAllowFiring)) allowFiring = savedAllowFiring;
+
+                // 3. Flight Settings
+                ModSettingApiWrapper.AddSlider(KEY_FLIGHT_SPEED, "滑翔速度 (Flight Speed)", DEFAULT_FLIGHT_SPEED, 1.0f, 20.0f, (val) => flight.FlightSpeed = val);
+                if (ModSettingApiWrapper.GetSavedValue<float>(KEY_FLIGHT_SPEED, out float savedSpeed)) flight.FlightSpeed = savedSpeed;
+
+                ModSettingApiWrapper.AddSlider(KEY_DESCENT_RATE, "滑翔下落速度 (Descent Rate)", DEFAULT_DESCENT_RATE, -5.0f, 0f, (val) => flight.DescentRate = val);
+                if (ModSettingApiWrapper.GetSavedValue<float>(KEY_DESCENT_RATE, out float savedDescent)) flight.DescentRate = savedDescent;
+
+                ModSettingApiWrapper.AddSlider(KEY_FLIGHT_PITCH, "飞行俯角 (Flight Pitch)", DEFAULT_FLIGHT_PITCH, 0.0f, 90.0f, (val) => flight.FlightPitch = val);
+                if (ModSettingApiWrapper.GetSavedValue<float>(KEY_FLIGHT_PITCH, out float savedPitch)) flight.FlightPitch = savedPitch;
+
+                ModSettingApiWrapper.AddToggle(KEY_ENABLE_FLIGHT_STEERING, "允许空中转向 (Enable Flight Steering)", DEFAULT_ENABLE_FLIGHT_STEERING, (val) => flight.EnableSteering = val);
+                if (ModSettingApiWrapper.GetSavedValue<bool>(KEY_ENABLE_FLIGHT_STEERING, out bool savedSteering)) flight.EnableSteering = savedSteering;
+
+                ModSettingApiWrapper.AddSlider(KEY_FLIGHT_STEERING_SPEED, "空中转向速度 (Flight Steering Speed)", DEFAULT_FLIGHT_STEERING_SPEED, 10.0f, 180.0f, (val) => flight.SteeringSpeed = val);
+                if (ModSettingApiWrapper.GetSavedValue<float>(KEY_FLIGHT_STEERING_SPEED, out float savedSteeringSpeed)) flight.SteeringSpeed = savedSteeringSpeed;
+
+                ModSettingApiWrapper.AddSlider(KEY_FLIGHT_ACTIVATION_SPEED, "自动飞行触发速度 (Auto-Flight Speed Threshold)", DEFAULT_FLIGHT_ACTIVATION_SPEED, 0.0f, 10.0f, (val) => inputManager.FlightActivationSpeed = val);
+                if (ModSettingApiWrapper.GetSavedValue<float>(KEY_FLIGHT_ACTIVATION_SPEED, out float savedActSpeed)) inputManager.FlightActivationSpeed = savedActSpeed;
+
+                // 4. Jump Settings
                 ModSettingApiWrapper.AddSlider(KEY_SINGLE_JUMP_HEIGHT, "一段跳高度 (Single Jump Height)", DEFAULT_SINGLE_JUMP_HEIGHT, 0.5f, 2.0f, (val) => jump.SingleJumpHeight = val);
                 if (ModSettingApiWrapper.GetSavedValue<float>(KEY_SINGLE_JUMP_HEIGHT, out float savedSingle)) jump.SingleJumpHeight = savedSingle;
 
@@ -104,30 +140,12 @@ namespace Stringification
                 ModSettingApiWrapper.AddSlider(KEY_JUMP_GRAVITY, "跳跃重力 (Jump Gravity)", DEFAULT_JUMP_GRAVITY, 10.0f, 100.0f, (val) => jump.Gravity = val);
                 if (ModSettingApiWrapper.GetSavedValue<float>(KEY_JUMP_GRAVITY, out float savedGravity)) jump.Gravity = savedGravity;
 
-                ModSettingApiWrapper.AddSlider(KEY_DESCENT_RATE, "滑翔下落速度 (Descent Rate)", DEFAULT_DESCENT_RATE, -5.0f, 0f, (val) => flight.DescentRate = val);
-                if (ModSettingApiWrapper.GetSavedValue<float>(KEY_DESCENT_RATE, out float savedDescent)) flight.DescentRate = savedDescent;
-
-                ModSettingApiWrapper.AddSlider(KEY_FLIGHT_SPEED, "滑翔速度 (Flight Speed)", DEFAULT_FLIGHT_SPEED, 1.0f, 20.0f, (val) => flight.FlightSpeed = val);
-                if (ModSettingApiWrapper.GetSavedValue<float>(KEY_FLIGHT_SPEED, out float savedSpeed)) flight.FlightSpeed = savedSpeed;
-
-                ModSettingApiWrapper.AddSlider(KEY_FLIGHT_ACTIVATION_SPEED, "自动飞行触发速度 (Auto-Flight Speed Threshold)", DEFAULT_FLIGHT_ACTIVATION_SPEED, 0.0f, 10.0f, (val) => inputManager.FlightActivationSpeed = val);
-                if (ModSettingApiWrapper.GetSavedValue<float>(KEY_FLIGHT_ACTIVATION_SPEED, out float savedActSpeed)) inputManager.FlightActivationSpeed = savedActSpeed;
-
-                ModSettingApiWrapper.AddSlider(KEY_FLIGHT_PITCH, "飞行俯角 (Flight Pitch)", DEFAULT_FLIGHT_PITCH, 0.0f, 90.0f, (val) => flight.FlightPitch = val);
-                if (ModSettingApiWrapper.GetSavedValue<float>(KEY_FLIGHT_PITCH, out float savedPitch)) flight.FlightPitch = savedPitch;
-
-                ModSettingApiWrapper.AddSlider(KEY_STRINGIFICATION_ROTATION, "弦化旋转角度 (Stringification Rotation)", DEFAULT_STRINGIFICATION_ROTATION, -180.0f, 180.0f, (val) => visuals.VisualRotationAngle = val);
-                if (ModSettingApiWrapper.GetSavedValue<float>(KEY_STRINGIFICATION_ROTATION, out float savedRotation)) visuals.VisualRotationAngle = savedRotation;
-
-                // Advanced Settings
-                ModSettingApiWrapper.AddSlider(KEY_OBSTACLE_CHECK_DIST, "障碍物检测距离 (Obstacle Check Dist)", DEFAULT_OBSTACLE_CHECK_DIST, 0.1f, 5.0f, (val) => flight.ObstacleCheckDistance = val);
-                if (ModSettingApiWrapper.GetSavedValue<float>(KEY_OBSTACLE_CHECK_DIST, out float savedObsDist)) flight.ObstacleCheckDistance = savedObsDist;
-
+                // 5. Advanced / Visuals
                 ModSettingApiWrapper.AddSlider(KEY_VISUAL_LERP_SPEED, "变换速度 (Lerp Speed)", DEFAULT_VISUAL_LERP_SPEED, 1.0f, 50.0f, (val) => visuals.LerpSpeed = val);
                 if (ModSettingApiWrapper.GetSavedValue<float>(KEY_VISUAL_LERP_SPEED, out float savedLerp)) visuals.LerpSpeed = savedLerp;
 
-                ModSettingApiWrapper.AddSlider(KEY_STRINGIFIED_THICKNESS, "纸片厚度 (Paper Thickness)", DEFAULT_STRINGIFIED_THICKNESS, 0.01f, 0.5f, (val) => visuals.StringifiedThickness = val);
-                if (ModSettingApiWrapper.GetSavedValue<float>(KEY_STRINGIFIED_THICKNESS, out float savedThickness)) visuals.StringifiedThickness = savedThickness;
+                ModSettingApiWrapper.AddSlider(KEY_OBSTACLE_CHECK_DIST, "障碍物检测距离 (Obstacle Check Dist)", DEFAULT_OBSTACLE_CHECK_DIST, 0.1f, 5.0f, (val) => flight.ObstacleCheckDistance = val);
+                if (ModSettingApiWrapper.GetSavedValue<float>(KEY_OBSTACLE_CHECK_DIST, out float savedObsDist)) flight.ObstacleCheckDistance = savedObsDist;
 
                 ModSettingApiWrapper.AddSlider(KEY_MIN_JUMP_TIME, "最小跳跃时间 (Min Jump Time)", DEFAULT_MIN_JUMP_TIME, 0.05f, 1.0f, (val) => jump.MinJumpTime = val);
                 if (ModSettingApiWrapper.GetSavedValue<float>(KEY_MIN_JUMP_TIME, out float savedMinJump)) jump.MinJumpTime = savedMinJump;
@@ -181,6 +199,13 @@ namespace Stringification
                 }
             }
 
+            // 2. Fire Input Check
+            if (isStringified && !allowFiring && inputManager.CheckFireInput())
+            {
+                SetStringificationState(false);
+                Debug.Log("Stringification: Cancelled via fire input");
+            }
+
             // Reset double jump state if grounded
             if (IsGrounded())
             {
@@ -208,7 +233,7 @@ namespace Stringification
             visuals.SetStringified(active);
             
             // Initial apply with identity rotation, LateUpdate will handle the rest
-            colliderManager.ApplyStringification(active, visuals.StringifiedThickness, Quaternion.identity, playerManager.TargetModel);
+            colliderManager.ApplyStringification(active, visuals.StringifiedThickness, playerManager.TargetModel);
             
             if (!active)
             {
@@ -259,7 +284,8 @@ namespace Stringification
         public void LateUpdate()
         {
             bool wasFlying = flight.IsFlying;
-            flight.UpdateLogic(playerManager.PlayerObject, playerManager.PlayerRigidbody);
+            float horizontalInput = inputManager.GetHorizontalInput();
+            flight.UpdateLogic(playerManager.PlayerObject, playerManager.PlayerRigidbody, horizontalInput);
 
             if (wasFlying && !flight.IsFlying)
             {
@@ -275,20 +301,7 @@ namespace Stringification
 
             if (isStringified)
             {
-                // Get the current rotation from the model to sync colliders
-                Quaternion currentRotation = Quaternion.identity;
-                if (playerManager.TargetModel != null)
-                {
-                    currentRotation = playerManager.TargetModel.localRotation;
-                }
-                
-                Vector3 velocity = Vector3.zero;
-                if (playerManager.PlayerRigidbody != null)
-                {
-                    velocity = playerManager.PlayerRigidbody.velocity;
-                }
-                
-                colliderManager.ApplyStringification(true, visuals.StringifiedThickness, currentRotation, playerManager.TargetModel);
+                colliderManager.ApplyStringification(true, visuals.StringifiedThickness, playerManager.TargetModel);
                 colliderManager.ResolveCollisions();
             }
         }

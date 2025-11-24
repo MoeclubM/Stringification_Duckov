@@ -33,6 +33,18 @@ namespace Stringification.Components
             return Input.GetKeyDown(JumpKey);
         }
 
+        public bool CheckFireInput()
+        {
+            if (Cursor.visible) return false;
+            return Input.GetMouseButtonDown(0);
+        }
+
+        public float GetHorizontalInput()
+        {
+            if (Cursor.visible) return 0f;
+            return Input.GetAxis("Horizontal");
+        }
+
         public bool CanDoubleJump(bool isGrounded)
         {
             if (!isGrounded && !hasDoubleJumped)

@@ -45,7 +45,7 @@ namespace Stringification.Components
             CacheColliders(player);
         }
 
-        public void ApplyStringification(bool active, float thicknessRatio, Quaternion rotation, Transform? targetModel)
+        public void ApplyStringification(bool active, float thicknessRatio, Transform? targetModel)
         {
             if (!active)
             {
@@ -58,7 +58,7 @@ namespace Stringification.Components
             float ratio = Mathf.Clamp(thicknessRatio, 0.01f, 1f);
 
             foreach (var state in boxColliders) state.Apply(ratio);
-            foreach (var handler in capsuleHandlers) handler.Apply(ratio, rotation, targetModel);
+            foreach (var handler in capsuleHandlers) handler.Apply(ratio, targetModel);
             foreach (var state in sphereColliders) state.Apply(ratio);
             foreach (var handler in reflectionHandlers) handler.Apply(ratio);
             characterControllerState?.Apply(ratio);
@@ -243,7 +243,7 @@ namespace Stringification.Components
                                    (capsule.gameObject.name == "DamageReceiver");
             }
 
-            public void Apply(float ratio, Quaternion rotation, Transform? targetModel)
+            public void Apply(float ratio, Transform? targetModel)
             {
                 if (capsule == null) return;
                 

@@ -151,6 +151,25 @@ namespace Stringification
             );
         }
 
+        /// <summary>
+        /// Add a toggle setting
+        /// 添加开关设置
+        /// </summary>
+        public static bool AddToggle(string key, string description, bool enable, Action<bool>? onValueChange = null)
+        {
+            if (!Available(key)) return false;
+            
+            // Signature: void AddToggle(ModInfo modInfo, string key, string description, bool enable, Action<bool> onValueChange)
+            Type delegateType = typeof(Action<ModInfo, string, string, bool, Action<bool>>);
+            
+            return InvokeMethod(
+                "AddToggle",
+                "AddToggle",
+                new object?[] { modInfo, key, description, enable, onValueChange },
+                delegateType
+            );
+        }
+
         private static bool Available(string key)
         {
             return IsInit && modInfo.displayName != null && modInfo.name != null && key != null;

@@ -8,6 +8,10 @@ namespace Stringification.Components
         public float DescentRate { get; set; } = 2.0f;
         public float FlightPitch { get; set; } = 75.0f;
         
+        // Steering Settings
+        public bool EnableSteering { get; set; } = true;
+        public float SteeringSpeed { get; set; } = 45.0f; // Degrees per second
+
         // Advanced Settings
         public float ObstacleCheckDistance { get; set; } = 1.0f;
         public float VisualLerpSpeed { get; set; } = 15.0f;
@@ -60,13 +64,24 @@ namespace Stringification.Components
             }
         }
 
-        public void UpdateLogic(GameObject? player, Rigidbody? rb)
+        public void UpdateLogic(GameObject? player, Rigidbody? rb, float horizontalInput)
         {
             if (!isFlying || player == null || rb == null) return;
 
             // 飞行物理 - 纯位置模拟
             
-            // 1. 确定飞行方向：使用启动时锁定的方向
+            // 0. 转向逻辑
+            if (EnableSteering && Mathf.Abs(horizontalInput) > 0.01f)
+            {
+                float rotationAmount = horizontalInput * SteeringSpeed * Time.deltaTime;
+                Quaternion turn = Quaternion.Euler(0, rotationAmount, 0);
+                flightDirection = turn * flightDirection;
+                
+                // 同时旋转角色模型以匹配飞行方向
+                player.transform.rotation = turn * player.transform.rotation;
+            }
+
+            // 1. 确定飞行方向：使用启动时锁定的方向 (现在可以被转向修改)
             Vector3 moveDir = flightDirection;
             
             // 2. 计算飞行速度
