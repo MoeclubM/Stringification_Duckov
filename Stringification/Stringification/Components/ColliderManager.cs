@@ -67,7 +67,9 @@ namespace Stringification.Components
         public void ResolveCollisions()
         {
             if (cachedPlayer == null) return;
-            foreach (var handler in capsuleHandlers) handler.ResolveCollision(cachedPlayer.transform);
+            
+            CharacterController? controller = cachedPlayer.GetComponent<CharacterController>();
+            foreach (var handler in capsuleHandlers) handler.ResolveCollision(cachedPlayer.transform, controller);
         }
 
         private void RestoreAll()
@@ -260,7 +262,7 @@ namespace Stringification.Components
             private void ApplyToRootProxy(float ratio, Transform? targetModel)
             {
                 if (!capsule.enabled) capsule.enabled = true;
-                capsule.radius = 0.05f; 
+                capsule.radius = ratio; 
 
                 if (targetModel == null) return;
 
@@ -281,12 +283,12 @@ namespace Stringification.Components
                     if (capsule.sharedMaterial != null) box.sharedMaterial = capsule.sharedMaterial;
                     proxyObj.layer = originalLayer;
                     
-                    UpdateBoxDimensions(box, ratio, targetModel);
+                    UpdateBoxDimensions(box, ratio, targetModel, true);
                     Debug.Log($"[Stringification] Created Root Proxy on {targetModel.name}");
                 }
                 else
                 {
-                    if (box != null) UpdateBoxDimensions(box, ratio, targetModel);
+                    if (box != null) UpdateBoxDimensions(box, ratio, targetModel, true);
                 }
                 
                 if (box != null && !box.enabled) box.enabled = true;
@@ -324,19 +326,19 @@ namespace Stringification.Components
                         capsule.gameObject.layer = capsule.transform.root.gameObject.layer;
                     }
                     
-                    UpdateBoxDimensions(box, ratio, targetModel); // targetModel is parent now
+                    UpdateBoxDimensions(box, ratio, targetModel, false); // targetModel is parent now
                     Debug.Log($"[Stringification] Created Trigger BoxCollider on DamageReceiver");
                 }
                 else
                 {
-                     UpdateBoxDimensions(box, ratio, targetModel);
+                     UpdateBoxDimensions(box, ratio, targetModel, false);
                 }
                 
                 if (!box.enabled) box.enabled = true;
                 box.isTrigger = true;
             }
 
-            private void UpdateBoxDimensions(BoxCollider box, float ratio, Transform targetModel)
+            private void UpdateBoxDimensions(BoxCollider box, float ratio, Transform targetModel, bool isProxy)
             {
                 Vector3 parentScale = targetModel.lossyScale;
                 float sx = Mathf.Abs(parentScale.x) > 0.001f ? parentScale.x : 1f;
@@ -347,6 +349,16 @@ namespace Stringification.Components
                 float length = height;
                 float thickness = width * ratio;
                 
+                // If it's the Root Proxy (for wall collision), lift it up and shrink height
+                // to avoid ground collision completely.
+                float heightOffset = 0f;
+                if (isProxy)
+                {
+                    float liftAmount = 0.3f; // Lift 0.3 units
+                    length = Mathf.Max(length - liftAmount, 0.1f);
+                    heightOffset = liftAmount * 0.5f; // Shift center up by half the lift amount
+                }
+
                 Vector3 worldSize;
                 if (direction == 1) worldSize = new Vector3(width, length, thickness);
                 else if (direction == 0) worldSize = new Vector3(length, width, thickness);
@@ -354,15 +366,13 @@ namespace Stringification.Components
                 
                 box.size = new Vector3(worldSize.x / sx, worldSize.y / sy, worldSize.z / sz);
                 
-                // Center compensation only needed if proxy is separate object (RootProxy)
-                // For DamageReceiver (same object), center is just originalCenter?
-                // But DamageReceiver is reparented to TargetModel and zeroed out.
-                // So box.center should be relative to TargetModel.
-                // originalCenter was relative to original parent (Root).
-                // If we want the box to be centered on the model, we should probably use Vector3.zero or adjust.
-                // For RootProxy, we calculated center based on originalCenter.
-                // Let's use the same logic for consistency if we assume originalCenter was "correct" relative to the model's pivot.
-                box.center = new Vector3(originalCenter.x / sx, originalCenter.y / sy, originalCenter.z / sz);
+                Vector3 center = originalCenter;
+                if (isProxy && direction == 1)
+                {
+                    center.y += heightOffset;
+                }
+
+                box.center = new Vector3(center.x / sx, center.y / sy, center.z / sz);
             }
 
             public void Restore()
@@ -402,7 +412,7 @@ namespace Stringification.Components
                 }
             }
 
-            public void ResolveCollision(Transform rootTransform)
+            public void ResolveCollision(Transform rootTransform, CharacterController? controller)
             {
                 if (isDamageReceiver || box == null || !box.enabled) return;
 
@@ -413,6 +423,9 @@ namespace Stringification.Components
                 Vector3 worldHalfExtents = Vector3.Scale(box.size, box.transform.lossyScale) * 0.5f;
                 Quaternion worldRotation = box.transform.rotation;
 
+                // Box is already lifted, so we can just check it directly.
+                // But keep a small safety margin if needed.
+                
                 Collider[] hits = Physics.OverlapBox(worldCenter, worldHalfExtents, worldRotation, layerMask, QueryTriggerInteraction.Ignore);
 
                 foreach (var hit in hits)
@@ -430,12 +443,23 @@ namespace Stringification.Components
                         hit, hit.transform.position, hit.transform.rotation,
                         out direction, out distance))
                     {
+                        // Ignore ground/slope collisions
+                        if (direction.y > 0.5f) continue; 
+
                         Vector3 separation = direction * distance;
                         Vector3 horizSeparation = Vector3.ProjectOnPlane(separation, Vector3.up);
                         
                         if (horizSeparation.sqrMagnitude > 0.000001f)
                         {
-                            rootTransform.position += horizSeparation;
+                            if (controller != null)
+                            {
+                                // Use CharacterController.Move to respect physics/slopes
+                                controller.Move(horizSeparation);
+                            }
+                            else
+                            {
+                                rootTransform.position += horizSeparation;
+                            }
                         }
                     }
                 }
@@ -443,7 +467,7 @@ namespace Stringification.Components
 
             private bool ShouldIgnoreCollision(Collider hit)
             {
-                if (hit.name.Contains("GoVolume") || hit.name.Contains("SpecialAttachment")) return true;
+                if (hit.name.Contains("GoVolume") || hit.name.Contains("SpecialAttachment") || hit.name.Contains("Agent_Pickup")) return true;
                 
                 Transform t = hit.transform;
                 while (t != null)
@@ -522,7 +546,7 @@ namespace Stringification.Components
 
             public void Apply(float ratio)
             {
-                controller.radius = Mathf.Max(radius * ratio, 0.05f);
+                controller.radius = Mathf.Max(radius * ratio, 0.1f);
                 controller.height = height;
                 controller.center = center;
             }

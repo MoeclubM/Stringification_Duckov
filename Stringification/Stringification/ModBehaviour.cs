@@ -35,17 +35,17 @@ namespace Stringification
         private const float DEFAULT_DOUBLE_JUMP_HEIGHT = 0.8f;
         private const float DEFAULT_JUMP_GRAVITY = 40.0f;
         private const float DEFAULT_FLIGHT_SPEED = 7.5f;
-        private const float DEFAULT_DESCENT_RATE = -1.0f;
+        private const float DEFAULT_DESCENT_RATE = -0.8f;
         private const float DEFAULT_FLIGHT_ACTIVATION_SPEED = 0.5f;
         private const float DEFAULT_FLIGHT_PITCH = 65.0f;
         private const bool DEFAULT_ENABLE_FLIGHT_STEERING = true;
-        private const float DEFAULT_FLIGHT_STEERING_SPEED = 45.0f;
+        private const float DEFAULT_FLIGHT_STEERING_SPEED = 65.0f;
         private const float DEFAULT_STRINGIFICATION_ROTATION = 90.0f;
         private const bool DEFAULT_ALLOW_FIRING = false;
         
-        private const float DEFAULT_OBSTACLE_CHECK_DIST = 1.0f;
+        private const float DEFAULT_OBSTACLE_CHECK_DIST = 1.5f;
         private const float DEFAULT_VISUAL_LERP_SPEED = 15.0f;
-        private const float DEFAULT_STRINGIFIED_THICKNESS = 0.05f;
+        private const float DEFAULT_STRINGIFIED_THICKNESS = 0.1f;
         private const float DEFAULT_MIN_JUMP_TIME = 0.15f;
         #endregion
 
@@ -149,7 +149,52 @@ namespace Stringification
 
                 ModSettingApiWrapper.AddSlider(KEY_MIN_JUMP_TIME, "最小跳跃时间 (Min Jump Time)", DEFAULT_MIN_JUMP_TIME, 0.05f, 1.0f, (val) => jump.MinJumpTime = val);
                 if (ModSettingApiWrapper.GetSavedValue<float>(KEY_MIN_JUMP_TIME, out float savedMinJump)) jump.MinJumpTime = savedMinJump;
+
+                ModSettingApiWrapper.AddButton("ResetConfig", "重置设置 (Reset Settings)", "重置 (Reset)", ResetConfig);
             }
+        }
+
+        private void ResetConfig()
+        {
+            // Reset local variables
+            inputManager.ToggleKey = DEFAULT_TOGGLE_KEY;
+            inputManager.JumpKey = DEFAULT_JUMP_KEY;
+            visuals.VisualRotationAngle = DEFAULT_STRINGIFICATION_ROTATION;
+            visuals.StringifiedThickness = DEFAULT_STRINGIFIED_THICKNESS;
+            allowFiring = DEFAULT_ALLOW_FIRING;
+            flight.FlightSpeed = DEFAULT_FLIGHT_SPEED;
+            flight.DescentRate = DEFAULT_DESCENT_RATE;
+            flight.FlightPitch = DEFAULT_FLIGHT_PITCH;
+            flight.EnableSteering = DEFAULT_ENABLE_FLIGHT_STEERING;
+            flight.SteeringSpeed = DEFAULT_FLIGHT_STEERING_SPEED;
+            inputManager.FlightActivationSpeed = DEFAULT_FLIGHT_ACTIVATION_SPEED;
+            jump.SingleJumpHeight = DEFAULT_SINGLE_JUMP_HEIGHT;
+            jump.DoubleJumpHeight = DEFAULT_DOUBLE_JUMP_HEIGHT;
+            jump.Gravity = DEFAULT_JUMP_GRAVITY;
+            visuals.LerpSpeed = DEFAULT_VISUAL_LERP_SPEED;
+            flight.ObstacleCheckDistance = DEFAULT_OBSTACLE_CHECK_DIST;
+            jump.MinJumpTime = DEFAULT_MIN_JUMP_TIME;
+
+            // Update UI
+            ModSettingApiWrapper.SetValue(KEY_TOGGLE, DEFAULT_TOGGLE_KEY);
+            ModSettingApiWrapper.SetValue(KEY_JUMP, DEFAULT_JUMP_KEY);
+            ModSettingApiWrapper.SetValue(KEY_STRINGIFICATION_ROTATION, DEFAULT_STRINGIFICATION_ROTATION);
+            ModSettingApiWrapper.SetValue(KEY_STRINGIFIED_THICKNESS, DEFAULT_STRINGIFIED_THICKNESS);
+            ModSettingApiWrapper.SetValue(KEY_ALLOW_FIRING, DEFAULT_ALLOW_FIRING);
+            ModSettingApiWrapper.SetValue(KEY_FLIGHT_SPEED, DEFAULT_FLIGHT_SPEED);
+            ModSettingApiWrapper.SetValue(KEY_DESCENT_RATE, DEFAULT_DESCENT_RATE);
+            ModSettingApiWrapper.SetValue(KEY_FLIGHT_PITCH, DEFAULT_FLIGHT_PITCH);
+            ModSettingApiWrapper.SetValue(KEY_ENABLE_FLIGHT_STEERING, DEFAULT_ENABLE_FLIGHT_STEERING);
+            ModSettingApiWrapper.SetValue(KEY_FLIGHT_STEERING_SPEED, DEFAULT_FLIGHT_STEERING_SPEED);
+            ModSettingApiWrapper.SetValue(KEY_FLIGHT_ACTIVATION_SPEED, DEFAULT_FLIGHT_ACTIVATION_SPEED);
+            ModSettingApiWrapper.SetValue(KEY_SINGLE_JUMP_HEIGHT, DEFAULT_SINGLE_JUMP_HEIGHT);
+            ModSettingApiWrapper.SetValue(KEY_DOUBLE_JUMP_HEIGHT, DEFAULT_DOUBLE_JUMP_HEIGHT);
+            ModSettingApiWrapper.SetValue(KEY_JUMP_GRAVITY, DEFAULT_JUMP_GRAVITY);
+            ModSettingApiWrapper.SetValue(KEY_VISUAL_LERP_SPEED, DEFAULT_VISUAL_LERP_SPEED);
+            ModSettingApiWrapper.SetValue(KEY_OBSTACLE_CHECK_DIST, DEFAULT_OBSTACLE_CHECK_DIST);
+            ModSettingApiWrapper.SetValue(KEY_MIN_JUMP_TIME, DEFAULT_MIN_JUMP_TIME);
+            
+            Debug.Log("[Stringification] Configuration reset to defaults.");
         }
 
         public void Update()

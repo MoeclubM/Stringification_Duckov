@@ -19,7 +19,7 @@ namespace Stringification.Components
         
         // Advanced Settings
         public float LerpSpeed { get; set; } = 15.0f;
-        public float StringifiedThickness { get; set; } = 0.05f;
+        public float StringifiedThickness { get; set; } = 0.1f;
 
         public void SetTarget(Transform? model, Transform? damageReceiver, Rigidbody? rb)
         {

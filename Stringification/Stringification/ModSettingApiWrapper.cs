@@ -170,6 +170,51 @@ namespace Stringification
             );
         }
 
+        /// <summary>
+        /// Add a button
+        /// 添加按钮
+        /// </summary>
+        public static bool AddButton(string key, string description, string buttonText = "Button", Action? onClickButton = null)
+        {
+            if (!Available(key)) return false;
+            
+            // Signature: void AddButton(ModInfo modInfo, string key, string description, string buttonText, Action onClickButton)
+            Type delegateType = typeof(Action<ModInfo, string, string, string, Action>);
+            
+            return InvokeMethod(
+                "AddButton",
+                "AddButton",
+                new object?[] { modInfo, key, description, buttonText, onClickButton },
+                delegateType
+            );
+        }
+
+        /// <summary>
+        /// Set value for a key
+        /// 设置指定key的配置值
+        /// </summary>
+        public static bool SetValue<T>(string key, T value, Action<bool>? callback = null)
+        {
+            if (!Available(key)) return false;
+            
+            // Signature: void SetValue<T>(ModInfo modInfo, string key, T value, Action<bool> callback)
+            MethodInfo? method = GetStaticPublicMethodInfo("SetValue");
+            if (method == null) return false;
+            
+            MethodInfo genericMethod = method.MakeGenericMethod(typeof(T));
+            
+            try
+            {
+                genericMethod.Invoke(null, new object?[] { modInfo, key, value, callback });
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[Stringification] Failed to invoke SetValue: {ex.Message}");
+                return false;
+            }
+        }
+
         private static bool Available(string key)
         {
             return IsInit && modInfo.displayName != null && modInfo.name != null && key != null;
